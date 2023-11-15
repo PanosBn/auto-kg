@@ -3,8 +3,13 @@ import csv
 import logging
 import yaml
 import os
+import random
+import pandas as pd
+import datetime
 from spacy.tokens import Doc, Span
+from spacy.training import iob_to_biluo
 from typing import Dict, List, Tuple
+from itertools import combinations
 
 logging.basicConfig(filename="parseLabelbox.log", encoding="utf-8", level=logging.DEBUG)
 
@@ -51,6 +56,66 @@ class EntityRelationshipExtractor:
                 logging.debug(
                     f"Number of rels in ontology mapping: {len(self.rel_ontology_mapping)}"
                 )
+
+    @staticmethod
+    def gather_entity_info(ent_id: str, df: pd.DataFrame):
+        """
+        A dictionary of sorts, that holds info about the entities in our dataset. Careful tho, you have to instatiate and populate the dataframe first.
+        """
+        ent = df[df["id"] == ent_id]
+
+        start = ent.start.values[0]
+        end = ent.end.values[0]
+        type = ent.type.values[0]
+
+        return start, end, type
+
+    @staticmethod
+    def apply_doc_level_annotations(
+        self, annotated_docs: List[Doc], ent_data: pd.DataFrame
+    ) -> List[Doc]:
+        """
+        Spacy is super nice and allows us to add custom attributes to the Doc object. We can use this as an additional annotatio layer to store the relationships in the doc object itself.
+        There are many annotation levels for Spacy Tokens, Spans and (in our case) Docs. We can use the doc level annotations to store the relationships.
+        See here for more: https://spacy.io/api/doc
+        """
+        if ent_data:
+            for doc in annotated_docs:
+                ents = list(doc.ents)
+                ent_ids = [ent.id_ for ent in ents]
+                rels = doc._.rel
+
+                ent_pair_combinations = list(combinations(ent_ids, 2))
+                count = 0
+                rel_ready_dict = {}
+                for key in rels:
+                    subject, object, relation = rels.get(key)
+                    s_o_tuple = tuple((subject, object))
+
+                    for pair in ent_pair_combinations:
+                        if pair == s_o_tuple:
+                            count += 1
+
+                            (
+                                subject_start,
+                                subject_end,
+                                _,
+                            ) = self.__class__.gather_entity_info(subject, ent_data)
+                            (
+                                object_start,
+                                object_end,
+                                _,
+                            ) = self.__class__.gather_entity_info(object, ent_data)
+
+                            relation = "_".join(relation.split(" "))
+                            rel_ready_dict[
+                                key
+                            ] = f"{subject_start+1};{subject_end+1};{object_start+1};{object_end+1};{relation}"
+
+                doc._.rel_ready = rel_ready_dict
+                logging.debug(f"Number of relationships in doc: {len(doc._.rel_ready)}")
+        else:
+            ValueError("No entity data provided")
 
     def load_mapping(self, file_path: str, delimiter: str) -> dict:
         mapping = {}
@@ -134,9 +199,7 @@ class EntityRelationshipExtractor:
             self.annotated_spacy_docs.append(doc)
 
             with open(self.entity_locations_file, "w", newline="") as ent1:
-                # creating writer object
                 csv_writer = csv.writer(ent1)
-                # appending data
                 csv_writer.writerows(ent_spans_locations)
 
             relationships = item["Label"]["relationships"]
@@ -172,3 +235,158 @@ class EntityRelationshipExtractor:
         with open(self.relationships_file, "w", newline="") as rel1:
             csv_writer = csv.writer(rel1)
             csv_writer.writerows(total_rels)
+
+
+def generate_training_data(annotated_spacy_docs: List[Doc]) -> List[str]:
+    random.seed(42).shuffle(annotated_spacy_docs)
+
+    split_1 = int(0.65 * len(annotated_spacy_docs))
+    split_2 = int(0.80 * len(annotated_spacy_docs))
+    train_filenames = annotated_spacy_docs[:split_1]
+    dev_filenames = annotated_spacy_docs[split_1:split_2]
+    test_filenames = annotated_spacy_docs[split_2:]
+
+    logging.info(
+        f"Share of data, Training: {len(train_filenames)}, Dev: {len(dev_filenames)}, Test: {len(test_filenames)}."
+    )
+
+    current_time = datetime.datetime.now()
+    today = str(current_time.day) + "_" + str(current_time.month)
+
+    export_training_data(train_filenames, f"train_{today}", mode="BIO")
+    export_training_data(dev_filenames, f"dev_{today}", mode="BIO")
+    export_training_data(test_filenames, f"test_{today}", mode="BIO")
+    logging.info(f"Exported training")
+
+
+def export_training_data(annotated_spacy_docs: List[Doc], split: str, mode="conllu"):
+    """
+    Exports the training data in the (BIOES)[https://stackoverflow.com/questions/17116446/what-do-the-bilou-tags-mean-in-named-entity-recognition]
+    or [CONLLU](https://universaldependencies.org/format.html) format.
+    """
+
+    document = list()
+
+    if mode == "conllu":
+        logging.info(f"Output type: {mode}")
+        document.append("# global.columns = " + ("\t").join(["id", "text", "ner"]))
+
+    for doc in annotated_spacy_docs:
+        word_positions_dict = dict()
+        current_document = []
+
+        tags = [
+            token.ent_iob_ + "-" + "_".join((token.ent_type_.split(" ")))
+            if token.ent_iob_ != "O"
+            else "O"
+            for token in doc
+        ]
+
+        biluo_tags = iob_to_biluo(tags)
+
+        for i, tag in enumerate(biluo_tags):
+            if tag.startswith("U-"):
+                biluo_tags[i] = tag.replace("U-", "S-")
+            if tag.startswith("L-"):
+                biluo_tags[i] = tag.replace("L-", "E-")
+
+        tags = biluo_tags
+
+        if mode == "bio":
+            document.append("-DOCSTART-" + "\t" + "-X-")
+            document.append("\n\n")
+
+        elif mode == "conllu":
+            document.append("")
+            text = "# text = " + doc.text
+            rels = "# relations = " + ("|").join([*doc._.rel_ready.values()])
+
+            rels_flat = list([doc._.rel_ready.values()][0])
+
+        sentence = "# text = "
+        tag_sanity_check = set()
+
+        start_position, end_position = 0, 0
+        end_of_prev_sentence = 0
+
+        ner_lines = list()
+        rel_lines = list()
+        counter = 1
+        for i, word_tag in enumerate(zip(doc, tags)):
+            if mode == "conllu":
+                word_positions_dict[i] = word_tag[0]
+                line = ("\t").join([str(counter), str(word_tag[0]), str(tags[i])])
+                counter += 1
+
+                tag_sanity_check.add(str(word_tag[1]))
+                ner_lines.append(line)
+
+                if str(word_tag[0]) == "." or str(word_tag[0]) == "?":
+                    end_of_prev_sentence = i - end_of_prev_sentence
+                    start_position = list(word_positions_dict.keys())[0]
+                    end_position = list(word_positions_dict.keys())[-1]
+
+                    current_document = doc[start_position : end_position + 1]
+                    rel_flag = False  # whether relations exist for this sentence
+                    for rel in rels_flat:
+                        # Get the positions of the entities {h: head, t: tail} in the relation and the relation itself.
+                        h1, h2, t1, t2, relation = rel.split(";")[:5]
+
+                        if (
+                            (int(h1) >= int(start_position))
+                            and (int(h2) <= int(end_position))
+                        ) and ((int(t2) <= int(end_position))):
+                            h1 = int(h1) - start_position
+                            h2 = int(h2) - start_position
+                            t1 = int(t1) - start_position
+                            t2 = int(t2) - start_position
+                            rel = (";").join(
+                                [str(h1), str(h2), str(t1), str(t2), relation]
+                            )
+
+                            rel_lines.append(rel)
+
+                            rel_flag = True
+
+                    if rel_flag:
+                        document.append("\n")
+                        document.append("# text = " + current_document.text)
+                        document.append("\n")
+                        number_of_rels = len(rel_lines)
+                        if number_of_rels == 1:
+                            document.append("# relations = " + rel_lines[0])
+                        else:
+                            relations = ("|").join([rel for rel in rel_lines[:-1]])
+                            document.append(
+                                "# relations = " + relations + "|" + rel_lines[-1]
+                            )
+                        document.append("\n")
+                        for line in ner_lines:
+                            document.append(line)
+                            document.append("\n")
+                        document.append("\n")
+                        sentence = "# text = "
+                        word_positions_dict = (
+                            dict()
+                        )  # RE INITIALIZE DICT TO SAVE THE POSITIONS OF THE NEW SENTENCE
+
+                        ner_lines = list()
+                        rel_lines = list()
+                        counter = 1
+            else:
+                document.append(
+                    ("\t").join([str(i + 1), str(word_tag[0]), str(word_tag[1])])
+                )
+                if str(word_tag[0]) == "." or str(word_tag[0]) == "?":
+                    document.append("\n")
+
+                document.append("\n")
+        document.append("\n\n\n")
+
+    if mode == "conllu":
+        output = f"data/from_json/{split}.{mode}"
+    else:
+        output = f"data/from_json/{split}.txt"
+    logging.info(f"Writing {mode} to {output}")
+    with open(output, "w", encoding="utf-8") as outfile:
+        outfile.write("".join(document))

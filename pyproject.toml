@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "auto-kg"
+version = "0.1.0"
+description = "Scripts for the Automated Knowledge Graph Generation master thesis"
+authors = ["Panos <panagiotisban@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "auto_kg"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+pandas = "^2.1.3"
+gensim = "^4.3.2"
+spacy = "^3.7.2"
+labelbox = "^3.55.0"
+pyyaml = "^6.0.1"
+black = "^23.11.0"
+pre-commit = "^3.5.0"
+isort = "^5.12.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

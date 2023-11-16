@@ -3,7 +3,7 @@
 
 [![Flair NLP](https://github.com/flairNLP/flair/blob/master/resources/docs/flair_logo_2020_FINAL_day_dpi72.png#gh-light-mode-only)](https://github.com/flairNLP/flair)
 
-This repository contains scripts for training Named Entity Recognition (NER) models using Flair, a powerful NLP framework. The training process is streamlined and configurable, allowing for easy experimentation with different model architectures and training parameters.
+This repository contains scripts for training Named Entity Recognition (NER) and Relation Classification (REL) models using Flair, a powerful NLP framework. The training process is streamlined and configurable, allowing for easy experimentation with different model architectures and training parameters.
 
 ## Features
 
@@ -57,7 +57,7 @@ To train your NER model, follow these steps:
 The trained models will be saved in the directory specified in the `config.ini`. Each model will be stored in a separate subfolder named after the model and its training parameters for easy identification.
 
 
-# Flair Relation ClassificationModel Training
+# Flair Relation Classification Model Training
 
 This repository provides scripts for training Relation Extraction models using the Flair framework. The process is designed to be highly configurable, facilitating experimentation with various models and training configurations.
 

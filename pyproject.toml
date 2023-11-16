@@ -18,6 +18,7 @@ black = "^23.11.0"
 pre-commit = "^3.5.0"
 isort = "^5.12.0"
 plotly = "^5.18.0"
+flair = "^0.13.0"
 
 
 [build-system]

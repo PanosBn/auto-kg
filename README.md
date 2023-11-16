@@ -1,7 +1,7 @@
 
 <p align="center">
-  <img src="tue.png" alt="Logo TUe" width="30%" hspace="20"/>
-  <img src="kpn.webp" alt="Logo KPN" width="30%"/>
+  <img src="static/tue.png" alt="Logo TUe" width="30%" hspace="40" vspace="30"/>
+  <img src="static/kpn.webp" alt="Logo KPN" width="30%"/>
 
 </p>
 

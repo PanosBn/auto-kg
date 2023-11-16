@@ -2,7 +2,6 @@
 <p align="center">
   <img src="static/tue.png" alt="Logo TUe" width="30%" hspace="40" vspace="30"/>
   <img src="static/kpn.webp" alt="Logo KPN" width="30%"/>
-
 </p>
 
 # Triplet Extraction Framework for Knowledge Graph Population
@@ -19,6 +18,7 @@ With the advent of deep learning techniques, state-of-the-art results have been 
 
 We demonstrate that weak supervision can, to some extent, replace human labeling and effectively train Entity Recognition models with weakly supervised data.
 
+
 ## Repository Structure
 
 - `Preprocessing`: Contains scripts used for creating the training data.
@@ -29,4 +29,62 @@ We demonstrate that weak supervision can, to some extent, replace human labeling
 
 This repository serves as a comprehensive guide and practical implementation of the techniques and methodologies discussed in the thesis.
 
+## Prerequisites for Using the Repository
+
+To use this repository, you need to have the following installed:
+
+- **Python (3.10 or higher)**: Ensure you have Python 3.10 or a newer version installed on your system. You can download Python from [python.org](https://www.python.org/downloads/).
+
+- **Poetry**: This project uses Poetry for dependency management and packaging. If you do not have Poetry installed, you can follow the instructions below to install it.
+
+### Installing Poetry
+
+Poetry is a tool for dependency management and packaging in Python. To install Poetry, you have a couple of options:
+
+### Option 1: Install using the official installer script
+
+#### Windows
+
+1. Open PowerShell and run the following command:
+
+   ```powershell
+   (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
+   ```
+
+#### macOS / Linux
+
+1. Open a terminal and execute the following command:
+
+   ```bash
+   curl -sSL https://install.python-poetry.org | python3 -
+   ```
+
+### Option 2: Install using pip
+
+You can also install Poetry using pip, Python's package installer. Run the following command:
+
+```bash
+pip install poetry
+```
+
+### Post-installation
+
+After installing Poetry, it's recommended to restart your terminal or run the following command to make Poetry available in your current session:
+
+```bash
+source $HOME/.poetry/env
+```
+
+### Verifying Installation
+
+To verify that Poetry has been installed correctly, run:
+
+```bash
+poetry --version
+```
+
+This command should display the installed version of Poetry.
+
 ---
+
+For more detailed instructions and troubleshooting, visit the [official Poetry installation guide](https://python-poetry.org/docs/#installation).

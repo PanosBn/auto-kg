@@ -13,10 +13,11 @@ logging.basicConfig(filename="trainREL.log", encoding="utf-8", level=logging.DEB
 
 
 class FlairRelationTrainer:
-    def __init__(self, config_path, entity_label_map_path):
+    def __init__(self, config_path: str, entity_label_map_path=None):
         self.config = self.read_config(config_path)
         self.corpus = self.setup_corpus()
-        self.entity_label_map = self.load_entity_label_map(entity_label_map_path)
+        if entity_label_map_path:
+            self.entity_label_map = self.load_entity_label_map(entity_label_map_path)
 
     def read_config(self, config_path):
         config = configparser.ConfigParser()
@@ -24,6 +25,10 @@ class FlairRelationTrainer:
         return config
 
     def setup_corpus(self):
+        # Even though we are doing relation classification, we need to have a column for NER.
+        # This is because the relation classifier uses the NER labels to identify the entities.
+        # The relations themselves are located in a comment row in the CoNLL-U file.
+        # P.S Check the README.md for more information on the CoNLL-U format.
         columns = {1: "text", 2: "ner"}
         data_folder = os.getcwd()
         corpus = ColumnCorpus(
@@ -40,10 +45,11 @@ class FlairRelationTrainer:
             return pickle.load(file)
 
     def train_models(self):
-        entity_label_map_path = self.config["RelationExtraction"][
-            "entity_label_map_path"
-        ]
-        self.entity_label_map = self.load_entity_label_map(entity_label_map_path)
+        if self.entity_label_map is None:
+            entity_label_map_path = self.config["RelationExtraction"][
+                "entity_label_map_path"
+            ]
+            self.entity_label_map = self.load_entity_label_map(entity_label_map_path)
 
         models = self.config["RelationExtraction"]["models"].split(",")
         learning_rate = float(self.config["RelationExtraction"]["learning_rate"])
@@ -90,6 +96,8 @@ class FlairRelationTrainer:
                     reduce_transformer_vocab=False,
                 )
 
-                logging.info(f"Relation model trained and saved in {model_output_dir}")
+                logging.info(
+                    f"Relation classification model trained and saved in {model_output_dir}"
+                )
             except Exception as e:
                 logging.error(f"Error during training {model_name}: {str(e)}")

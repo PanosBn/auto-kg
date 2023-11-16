@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "auto-kg"
-version = "0.1.0"
-description = "Scripts for the Automated Knowledge Graph Generation master thesis"
+version = "0.3.0"
+description = "Code that I wrote for my master thesis: Automated Knowledge Graph Generation."
 authors = ["Panos <panagiotisban@gmail.com>"]
 license = "MIT"
 readme = "README.md"

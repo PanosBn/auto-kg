@@ -8,13 +8,7 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 
-class _MaliciousPayload:
-    """Pickles to a call that creates a sentinel file when *unpickled*.
-
-    Tests only ever create (dump) this payload; they assert that the code
-    under test refuses it without loading it, i.e. the sentinel never appears.
-    """
-
+class _PickleThatCreatesSentinelFileWhenLoaded:
     def __init__(self, sentinel):
         self.sentinel = sentinel
 
@@ -28,5 +22,5 @@ def malicious_pickle(tmp_path):
 
     sentinel = tmp_path / "PWNED"
     path = tmp_path / "entity_label_map.pkl"
-    path.write_bytes(pickle.dumps(_MaliciousPayload(str(sentinel)), protocol=4))
+    path.write_bytes(pickle.dumps(_PickleThatCreatesSentinelFileWhenLoaded(str(sentinel)), protocol=4))
     return path, sentinel

@@ -1,29 +1,3 @@
-"""Safe loading of the relation-classifier entity label map.
-
-The relation classifier needs the set of allowed ``(head_label, tail_label)``
-entity-type pairs. Earlier versions of this repository read that set from a
-Python pickle, which executes arbitrary code when loaded. This module replaces
-it with a small, validated JSON document and never unpickles anything.
-
-Schema (``schema_version`` 1)::
-
-    {
-      "schema_version": 1,
-      "entity_pairs": [["PERSON", "PRODUCT"], ["PERSON", "SERVICE"]]
-    }
-
-``entity_pairs`` is a non-empty list of two-item lists of entity labels, as they
-appear in the NER column of the training data (without ``B-``/``I-``/``E-``/``S-``
-prefixes). Unknown keys are rejected.
-
-A JSON file can also be generated from CoNLL-U training data without touching
-any legacy pickle::
-
-    python -m models.entity_label_map from-conllu TRAIN.conllu -o entity_label_map.json
-
-See ``docs/entity_label_map_migration.md``.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -31,14 +5,13 @@ import json
 import os
 import re
 import sys
-from typing import FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Iterable, List, Optional, Sequence, Set, Tuple
 
 SCHEMA_VERSION = 1
 MAX_FILE_BYTES = 1_000_000
 MAX_PAIRS = 10_000
 MAX_LABEL_LENGTH = 128
 
-# Labels are NER type names: letters, digits and a few separators, no whitespace.
 _LABEL_RE = re.compile(r"^[^\W][\w.\-:/]*$", re.UNICODE)
 _ALLOWED_KEYS = {"schema_version", "entity_pairs", "description"}
 _BIOES_PREFIX_RE = re.compile(r"^(?:[BIESLU])-")
@@ -47,14 +20,14 @@ EntityPair = Tuple[str, str]
 
 
 class EntityLabelMapError(ValueError):
-    """Raised when an entity label map file is missing, unsafe or invalid."""
+    pass
+
+
+PICKLE_PROTOCOL_2_PLUS_MARKER = b"\x80"
 
 
 def _looks_like_pickle(head: bytes) -> bool:
-    # Pickle protocol 2+ streams start with the PROTO opcode 0x80. Older
-    # protocols are ASCII but never valid JSON objects, which JSON parsing
-    # already rejects; this check only produces a clearer error message.
-    return head[:1] == b"\x80"
+    return head[:1] == PICKLE_PROTOCOL_2_PLUS_MARKER
 
 
 def validate_label(label: object, where: str) -> str:
@@ -73,7 +46,6 @@ def validate_label(label: object, where: str) -> str:
 
 
 def parse_entity_label_map(document: object) -> Set[EntityPair]:
-    """Validate an already-decoded JSON document and return the pair set."""
     if not isinstance(document, dict):
         raise EntityLabelMapError("entity label map must be a JSON object")
     unknown = set(document) - _ALLOWED_KEYS
@@ -104,7 +76,6 @@ def parse_entity_label_map(document: object) -> Set[EntityPair]:
 
 
 def load_entity_label_map(path: str | os.PathLike) -> Set[EntityPair]:
-    """Load and validate a JSON entity label map. Never unpickles data."""
     path = os.fspath(path)
     if not os.path.isfile(path):
         raise EntityLabelMapError(f"entity label map not found: {path}")
@@ -132,14 +103,13 @@ def load_entity_label_map(path: str | os.PathLike) -> Set[EntityPair]:
 
 
 def dump_entity_label_map(pairs: Iterable[EntityPair], description: Optional[str] = None) -> str:
-    """Serialise pairs to the schema-version-1 JSON format (validated)."""
     document = {
         "schema_version": SCHEMA_VERSION,
         "entity_pairs": [list(pair) for pair in sorted(set(pairs))],
     }
     if description:
         document["description"] = description
-    parse_entity_label_map(document)  # validate before writing
+    parse_entity_label_map(document)
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -151,12 +121,6 @@ def _strip_bioes(tag: str) -> Optional[str]:
 
 
 def pairs_from_conllu(lines: Iterable[str]) -> Set[EntityPair]:
-    """Derive entity-type pairs from ``# relations`` comments in CoNLL-U data.
-
-    Expects the format produced by ``preprocessing.export_training_data``: token
-    lines ``ID<TAB>TOKEN<TAB>NER`` and relation comments
-    ``# relations = h_start;h_end;t_start;t_end;label|...`` with 1-based token ids.
-    """
     pairs: Set[EntityPair] = set()
     relations: List[Tuple[int, int]] = []
     tags: dict = {}
@@ -203,7 +167,7 @@ def pairs_from_conllu(lines: Iterable[str]) -> Set[EntityPair]:
 
 
 def _main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(description="Create or validate a JSON entity label map.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     convert = sub.add_parser(

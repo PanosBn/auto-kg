@@ -43,8 +43,6 @@ class FlairRelationTrainer:
         return corpus
 
     def load_entity_label_map(self, entity_label_map_path: str):
-        # Validated JSON only (see models/entity_label_map.py). Legacy pickle
-        # maps are rejected because unpickling can execute arbitrary code.
         return load_entity_label_map(entity_label_map_path)
 
     def train_models(self):

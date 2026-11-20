@@ -68,12 +68,6 @@ class DataLabellingService:
 
     @staticmethod
     def get_word_span(text: str, word: str) -> Tuple[int, int]:
-        """Return the span of the last literal occurrence of ``word`` in ``text``.
-
-        ``word`` is matched literally (regex metacharacters are escaped), so
-        caller-supplied words cannot inject patterns or trigger catastrophic
-        backtracking. Raises ``ValueError`` when the word does not occur.
-        """
         if not word:
             raise ValueError("word must be a non-empty string")
         match = None
@@ -135,7 +129,6 @@ class DataLabellingService:
     def signing_function_batch(self, obj_bytes: bytes) -> str:
         try:
             url = self.client.upload_data(content=obj_bytes, sign=True)
-            # The signed URL is a temporary credential: never log it in full.
             logging.info("Uploaded batch data to %s", redact_url(url))
             return url
         except LabelboxError as e:

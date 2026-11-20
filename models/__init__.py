@@ -1,22 +1,16 @@
-"""Model training entry points.
-
-Trainers are imported lazily so lightweight helpers (for example
-``models.entity_label_map``) can be used and tested without importing Flair
-and PyTorch.
-"""
-
 __all__ = ["FlairRelationTrainer", "FlairNERTrainer", "FlairSequenceLabelingTrainer"]
+
+_LAZY = {
+    "FlairRelationTrainer": (".relation_classfication", "FlairRelationTrainer"),
+    "FlairNERTrainer": (".sequence_labeling", "FlairNERTrainer"),
+    "FlairSequenceLabelingTrainer": (".sequence_labeling", "FlairNERTrainer"),
+}
 
 
 def __getattr__(name):
-    if name == "FlairRelationTrainer":
-        from .relation_classfication import FlairRelationTrainer
+    if name in _LAZY:
+        import importlib
 
-        return FlairRelationTrainer
-    if name in ("FlairNERTrainer", "FlairSequenceLabelingTrainer"):
-        # ``FlairSequenceLabelingTrainer`` was exported previously but never
-        # existed; keep the name as an alias of the real class.
-        from .sequence_labeling import FlairNERTrainer
-
-        return FlairNERTrainer
+        module_name, attribute = _LAZY[name]
+        return getattr(importlib.import_module(module_name, __name__), attribute)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

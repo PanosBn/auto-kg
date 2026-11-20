@@ -17,8 +17,6 @@ pyyaml = "^6.0.1"
 plotly = "^5.18.0"
 flair = "^0.13.0"
 
-# Developer-only tools: not needed to run preprocessing or training.
-# Install with `poetry install --with dev`.
 [tool.poetry.group.dev.dependencies]
 black = "^23.11.0"
 pre-commit = "^3.5.0"

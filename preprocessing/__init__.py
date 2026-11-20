@@ -1,9 +1,3 @@
-"""Preprocessing helpers.
-
-Submodules are imported lazily so lightweight helpers (for example
-``preprocessing.log_safety``) can be used without importing spaCy or Labelbox.
-"""
-
 __all__ = [
     "DataLabellingService",
     "EntityRelationshipExtractor",

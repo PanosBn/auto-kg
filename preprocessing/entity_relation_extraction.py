@@ -193,7 +193,6 @@ class EntityRelationshipExtractor:
             try:
                 doc.set_ents(ent_spans)
             except Exception as exc:
-                # Never log the dialogue itself: it is customer data.
                 logging.warning(
                     "Item %d (id=%s) failed to set entities: %s",
                     idx,

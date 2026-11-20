@@ -192,9 +192,14 @@ class EntityRelationshipExtractor:
 
             try:
                 doc.set_ents(ent_spans)
-            except:
-                print(f"Item {idx} failed")
-                print(text)
+            except Exception as exc:
+                # Never log the dialogue itself: it is customer data.
+                logging.warning(
+                    "Item %d (id=%s) failed to set entities: %s",
+                    idx,
+                    doc_id,
+                    exc.__class__.__name__,
+                )
 
             self.annotated_spacy_docs.append(doc)
 

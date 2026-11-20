@@ -4,11 +4,14 @@ import re
 import uuid
 import logging
 import yaml
-from labelbox import LabelImport, LabelboxError
+from labelbox import LabelImport
+from labelbox.exceptions import LabelboxError
 from labelbox.data.annotation_types import Label, TextData, ObjectAnnotation, TextEntity
 from labelbox.data.serialization import NDJsonConverter
 from spacy.tokens import Doc
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
+
+from .log_safety import redact_url
 
 logging.basicConfig(filename="uploadJob.log", encoding="utf-8", level=logging.DEBUG)
 
@@ -64,11 +67,21 @@ class DataLabellingService:
             raise
 
     @staticmethod
-    def get_word_span(text: str, word: str) -> tuple(int, int):
-        p = re.compile(word)
-        for m in p.finditer(text):
-            logging.debug((m.start(), m.end(), m.group()))
-        return m.start(), m.end()
+    def get_word_span(text: str, word: str) -> Tuple[int, int]:
+        """Return the span of the last literal occurrence of ``word`` in ``text``.
+
+        ``word`` is matched literally (regex metacharacters are escaped), so
+        caller-supplied words cannot inject patterns or trigger catastrophic
+        backtracking. Raises ``ValueError`` when the word does not occur.
+        """
+        if not word:
+            raise ValueError("word must be a non-empty string")
+        match = None
+        for match in re.finditer(re.escape(word), text):
+            logging.debug("word span match at %d-%d", match.start(), match.end())
+        if match is None:
+            raise ValueError("word not found in text")
+        return match.start(), match.end()
 
     def gather_labels(self, label_payload: list, data_row):
         text_data = TextData(uid=data_row)
@@ -122,7 +135,8 @@ class DataLabellingService:
     def signing_function_batch(self, obj_bytes: bytes) -> str:
         try:
             url = self.client.upload_data(content=obj_bytes, sign=True)
-            logging.info(f"Uploaded batch data at {url}")
+            # The signed URL is a temporary credential: never log it in full.
+            logging.info("Uploaded batch data to %s", redact_url(url))
             return url
         except LabelboxError as e:
             logging.error(f"Error in signing batch function: {e}")

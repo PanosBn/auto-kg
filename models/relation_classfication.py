@@ -7,7 +7,8 @@ from flair.embeddings import TransformerDocumentEmbeddings
 from flair.models import RelationClassifier
 from flair.models.relation_classifier_model import TypedEntityMarker
 from flair.trainers import ModelTrainer
-import pickle
+
+from .entity_label_map import load_entity_label_map
 
 logging.basicConfig(filename="trainREL.log", encoding="utf-8", level=logging.DEBUG)
 
@@ -16,6 +17,7 @@ class FlairRelationTrainer:
     def __init__(self, config_path: str, entity_label_map_path=None):
         self.config = self.read_config(config_path)
         self.corpus = self.setup_corpus()
+        self.entity_label_map = None
         if entity_label_map_path:
             self.entity_label_map = self.load_entity_label_map(entity_label_map_path)
 
@@ -41,8 +43,9 @@ class FlairRelationTrainer:
         return corpus
 
     def load_entity_label_map(self, entity_label_map_path: str):
-        with open(entity_label_map_path, "rb") as file:
-            return pickle.load(file)
+        # Validated JSON only (see models/entity_label_map.py). Legacy pickle
+        # maps are rejected because unpickling can execute arbitrary code.
+        return load_entity_label_map(entity_label_map_path)
 
     def train_models(self):
         if self.entity_label_map is None:

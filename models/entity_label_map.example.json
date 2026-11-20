@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "description": "Synthetic example. Replace with the entity-type pairs used in your own relation data.",
+  "entity_pairs": [
+    ["PERSON", "PRODUCT"],
+    ["PERSON", "SERVICE"],
+    ["DEVICE", "STATUS"]
+  ]
+}

@@ -84,6 +84,8 @@ fine_tune_layers = [Layers to Fine Tune]
 entity_label_map_path = [Path to Entity Label Map File]
 ```
 
+The entity label map must be a validated JSON file (`schema_version` 1), not a pickle. Pickled maps are rejected because loading them can execute code. See [`docs/entity_label_map_migration.md`](../docs/entity_label_map_migration.md) and the synthetic example `entity_label_map.example.json`.
+
 Refer to `config.ini` for a comprehensive explanation of each parameter.
 
 ## Training Workflow
